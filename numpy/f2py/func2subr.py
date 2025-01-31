@@ -1,17 +1,13 @@
-#!/usr/bin/env python3
 """
 
 Rules for building C/API module with f2py2e.
 
-Copyright 1999,2000 Pearu Peterson all rights reserved,
-Pearu Peterson <pearu@ioc.ee>
+Copyright 1999 -- 2011 Pearu Peterson all rights reserved.
+Copyright 2011 -- present NumPy Developers.
 Permission to use, modify, and distribute this software is given under the
 terms of the NumPy License.
 
 NO WARRANTY IS EXPRESSED OR IMPLIED.  USE AT YOUR OWN RISK.
-$Date: 2004/11/26 11:13:06 $
-Pearu Peterson
-
 """
 import copy
 
@@ -89,7 +85,7 @@ def createfuncwrapper(rout, signature=0):
         for i, d in enumerate(v.get('dimension', [])):
             if d == ':':
                 dn = 'f2py_%s_d%s' % (a, i)
-                dv = dict(typespec='integer', intent=['hide'])
+                dv = {'typespec': 'integer', 'intent': ['hide']}
                 dv['='] = 'shape(%s, %s)' % (a, i)
                 extra_args.append(dn)
                 vars[dn] = dv
@@ -213,7 +209,7 @@ def createsubrwrapper(rout, signature=0):
         for i, d in enumerate(v.get('dimension', [])):
             if d == ':':
                 dn = 'f2py_%s_d%s' % (a, i)
-                dv = dict(typespec='integer', intent=['hide'])
+                dv = {'typespec': 'integer', 'intent': ['hide']}
                 dv['='] = 'shape(%s, %s)' % (a, i)
                 extra_args.append(dn)
                 vars[dn] = dv

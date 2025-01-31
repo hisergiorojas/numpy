@@ -5,12 +5,13 @@ from cpython cimport PyFloat_AsDouble
 import sys
 import numpy as np
 cimport numpy as np
-cimport numpy.math as npmath
 
 from libc.stdint cimport uintptr_t
+from libc.math cimport isnan, signbit
 
 cdef extern from "limits.h":
     cdef long LONG_MAX  # NumPy has it, maybe `__init__.pyd` should expose it
+
 
 
 __all__ = ['interface']
@@ -415,7 +416,7 @@ cdef int check_array_constraint(np.ndarray val, object name, constraint_type con
             raise ValueError("{0} value too large".format(name))
         elif not np.all(np.greater_equal(val, 0.0)):
             raise ValueError("{0} < 0 or {0} contains NaNs".format(name))
-    elif cons == LEGACY_CONS_NON_NEGATVE_INBOUNDS_LONG:
+    elif cons == LEGACY_CONS_NON_NEGATIVE_INBOUNDS_LONG:
         # Note, we assume that array is integral:
         if not np.all(val >= 0):
             raise ValueError(name + " < 0")
@@ -430,10 +431,10 @@ cdef int check_array_constraint(np.ndarray val, object name, constraint_type con
 cdef int check_constraint(double val, object name, constraint_type cons) except -1:
     cdef bint is_nan
     if cons == CONS_NON_NEGATIVE:
-        if not npmath.isnan(val) and npmath.signbit(val):
+        if not isnan(val) and signbit(val):
             raise ValueError(name + " < 0")
     elif cons == CONS_POSITIVE or cons == CONS_POSITIVE_NOT_NAN:
-        if cons == CONS_POSITIVE_NOT_NAN and npmath.isnan(val):
+        if cons == CONS_POSITIVE_NOT_NAN and isnan(val):
             raise ValueError(name + " must not be NaN")
         elif val <= 0:
             raise ValueError(name + " <= 0")
@@ -462,11 +463,11 @@ cdef int check_constraint(double val, object name, constraint_type cons) except 
             raise ValueError("{0} < 0 or {0} is NaN".format(name))
         elif not (val <= LEGACY_POISSON_LAM_MAX):
             raise ValueError(name + " value too large")
-    elif cons == LEGACY_CONS_NON_NEGATVE_INBOUNDS_LONG:
+    elif cons == LEGACY_CONS_NON_NEGATIVE_INBOUNDS_LONG:
         # Note: Assume value is integral (double of LONG_MAX should work out)
         if val < 0:
             raise ValueError(name + " < 0")
-        elif val > LONG_MAX:
+        elif val > <double> LONG_MAX:
             raise ValueError(
                     name + " is out of bounds for long, consider using "
                     "the new generator API for 64bit integers.")
@@ -917,31 +918,33 @@ cdef object disc(void *func, void *state, object size, object lock,
         else:
             raise NotImplementedError("No vector path available")
 
+    # At this point, we know is_scalar is True.
+
     if narg_double > 0:
         _da = PyFloat_AsDouble(a)
-        if a_constraint != CONS_NONE and is_scalar:
+        if a_constraint != CONS_NONE:
             check_constraint(_da, a_name, a_constraint)
 
         if narg_double > 1:
             _db = PyFloat_AsDouble(b)
-            if b_constraint != CONS_NONE and is_scalar:
+            if b_constraint != CONS_NONE:
                 check_constraint(_db, b_name, b_constraint)
         elif narg_int64 == 1:
             _ib = <int64_t>b
-            if b_constraint != CONS_NONE and is_scalar:
+            if b_constraint != CONS_NONE:
                 check_constraint(<double>_ib, b_name, b_constraint)
     else:
         if narg_int64 > 0:
             _ia = <int64_t>a
-            if a_constraint != CONS_NONE and is_scalar:
+            if a_constraint != CONS_NONE:
                 check_constraint(<double>_ia, a_name, a_constraint)
         if narg_int64 > 1:
             _ib = <int64_t>b
-            if b_constraint != CONS_NONE and is_scalar:
+            if b_constraint != CONS_NONE:
                 check_constraint(<double>_ib, b_name, b_constraint)
         if narg_int64 > 2:
             _ic = <int64_t>c
-            if c_constraint != CONS_NONE and is_scalar:
+            if c_constraint != CONS_NONE:
                 check_constraint(<double>_ic, c_name, c_constraint)
 
     if size is None:

@@ -29,6 +29,73 @@ cdef extern from "numpy/arrayobject.h":
     ctypedef signed long npy_intp
     ctypedef unsigned long npy_uintp
 
+    ctypedef unsigned char      npy_bool
+
+    ctypedef signed char      npy_byte
+    ctypedef signed short     npy_short
+    ctypedef signed int       npy_int
+    ctypedef signed long      npy_long
+    ctypedef signed long long npy_longlong
+
+    ctypedef unsigned char      npy_ubyte
+    ctypedef unsigned short     npy_ushort
+    ctypedef unsigned int       npy_uint
+    ctypedef unsigned long      npy_ulong
+    ctypedef unsigned long long npy_ulonglong
+
+    ctypedef float        npy_float
+    ctypedef double       npy_double
+    ctypedef long double  npy_longdouble
+
+    ctypedef signed char        npy_int8
+    ctypedef signed short       npy_int16
+    ctypedef signed int         npy_int32
+    ctypedef signed long long   npy_int64
+    ctypedef signed long long   npy_int96
+    ctypedef signed long long   npy_int128
+
+    ctypedef unsigned char      npy_uint8
+    ctypedef unsigned short     npy_uint16
+    ctypedef unsigned int       npy_uint32
+    ctypedef unsigned long long npy_uint64
+    ctypedef unsigned long long npy_uint96
+    ctypedef unsigned long long npy_uint128
+
+    ctypedef float        npy_float32
+    ctypedef double       npy_float64
+    ctypedef long double  npy_float80
+    ctypedef long double  npy_float96
+    ctypedef long double  npy_float128
+
+    ctypedef struct npy_cfloat:
+        pass
+
+    ctypedef struct npy_cdouble:
+        pass
+
+    ctypedef struct npy_clongdouble:
+        pass
+
+    ctypedef struct npy_complex64:
+        pass
+
+    ctypedef struct npy_complex128:
+        pass
+
+    ctypedef struct npy_complex160:
+        pass
+
+    ctypedef struct npy_complex192:
+        pass
+
+    ctypedef struct npy_complex256:
+        pass
+
+    ctypedef struct PyArray_Dims:
+        npy_intp *ptr
+        int len
+
+
     cdef enum NPY_TYPES:
         NPY_BOOL
         NPY_BYTE
@@ -50,10 +117,11 @@ cdef extern from "numpy/arrayobject.h":
         NPY_OBJECT
         NPY_STRING
         NPY_UNICODE
+        NPY_VSTRING
         NPY_VOID
         NPY_DATETIME
         NPY_TIMEDELTA
-        NPY_NTYPES
+        NPY_NTYPES_LEGACY
         NPY_NOTYPE
 
         NPY_INT8
@@ -84,6 +152,7 @@ cdef extern from "numpy/arrayobject.h":
         NPY_COMPLEX512
 
         NPY_INTP
+        NPY_UINTP
         NPY_DEFAULT_INT  # Not a compile time constant (normally)!
 
     ctypedef enum NPY_ORDER:
@@ -187,9 +256,8 @@ cdef extern from "numpy/arrayobject.h":
         NPY_ARRAY_UPDATE_ALL
 
     cdef enum:
-        NPY_MAXDIMS
-
-    npy_intp NPY_MAX_ELSIZE
+        NPY_MAXDIMS  # 64 on NumPy 2.x and 32 on NumPy 1.x
+        NPY_RAVEL_AXIS  # Used for functions like PyArray_Mean
 
     ctypedef void (*PyArray_VectorUnaryFunc)(void *, void *, npy_intp, void *,  void *)
 
@@ -214,16 +282,38 @@ cdef extern from "numpy/arrayobject.h":
         # PyArray_IsNativeByteOrder(dtype.byteorder) instead of
         # directly accessing this field.
         cdef char byteorder
-        cdef char flags
         cdef int type_num
-        cdef int itemsize "elsize"
-        cdef int alignment
-        cdef object fields
-        cdef tuple names
+
+        @property
+        cdef inline npy_intp itemsize(self) noexcept nogil:
+            return PyDataType_ELSIZE(self)
+
+        @property
+        cdef inline npy_intp alignment(self) noexcept nogil:
+            return PyDataType_ALIGNMENT(self)
+
+        # Use fields/names with care as they may be NULL.  You must check
+        # for this using PyDataType_HASFIELDS.
+        @property
+        cdef inline object fields(self):
+            return <object>PyDataType_FIELDS(self)
+
+        @property
+        cdef inline tuple names(self):
+            return <tuple>PyDataType_NAMES(self)
+
         # Use PyDataType_HASSUBARRAY to test whether this field is
         # valid (the pointer can be NULL). Most users should access
         # this field via the inline helper method PyDataType_SHAPE.
-        cdef PyArray_ArrayDescr* subarray
+        @property
+        cdef inline PyArray_ArrayDescr* subarray(self) noexcept nogil:
+            return PyDataType_SUBARRAY(self)
+
+        @property
+        cdef inline npy_uint64 flags(self) noexcept nogil:
+            """The data types flags."""
+            return PyDataType_FLAGS(self)
+
 
     ctypedef class numpy.flatiter [object PyArrayIterObject, check_size ignore]:
         # Use through macros
@@ -232,32 +322,32 @@ cdef extern from "numpy/arrayobject.h":
     ctypedef class numpy.broadcast [object PyArrayMultiIterObject, check_size ignore]:
 
         @property
-        cdef inline int numiter(self) nogil:
+        cdef inline int numiter(self) noexcept nogil:
             """The number of arrays that need to be broadcast to the same shape."""
             return PyArray_MultiIter_NUMITER(self)
 
         @property
-        cdef inline npy_intp size(self) nogil:
+        cdef inline npy_intp size(self) noexcept nogil:
             """The total broadcasted size."""
             return PyArray_MultiIter_SIZE(self)
 
         @property
-        cdef inline npy_intp index(self) nogil:
+        cdef inline npy_intp index(self) noexcept nogil:
             """The current (1-d) index into the broadcasted result."""
             return PyArray_MultiIter_INDEX(self)
 
         @property
-        cdef inline int nd(self) nogil:
+        cdef inline int nd(self) noexcept nogil:
             """The number of dimensions in the broadcasted result."""
             return PyArray_MultiIter_NDIM(self)
 
         @property
-        cdef inline npy_intp* dimensions(self) nogil:
+        cdef inline npy_intp* dimensions(self) noexcept nogil:
             """The shape of the broadcasted result."""
             return PyArray_MultiIter_DIMS(self)
 
         @property
-        cdef inline void** iters(self) nogil:
+        cdef inline void** iters(self) noexcept nogil:
             """An array of iterator objects that holds the iterators for the arrays to be broadcast together.
             On return, the iterators are adjusted for broadcasting."""
             return PyArray_MultiIter_ITERS(self)
@@ -275,7 +365,7 @@ cdef extern from "numpy/arrayobject.h":
         # Instead, we use properties that map to the corresponding C-API functions.
 
         @property
-        cdef inline PyObject* base(self) nogil:
+        cdef inline PyObject* base(self) noexcept nogil:
             """Returns a borrowed reference to the object owning the data/memory.
             """
             return PyArray_BASE(self)
@@ -287,13 +377,13 @@ cdef extern from "numpy/arrayobject.h":
             return <dtype>PyArray_DESCR(self)
 
         @property
-        cdef inline int ndim(self) nogil:
+        cdef inline int ndim(self) noexcept nogil:
             """Returns the number of dimensions in the array.
             """
             return PyArray_NDIM(self)
 
         @property
-        cdef inline npy_intp *shape(self) nogil:
+        cdef inline npy_intp *shape(self) noexcept nogil:
             """Returns a pointer to the dimensions/shape of the array.
             The number of elements matches the number of dimensions of the array (ndim).
             Can return NULL for 0-dimensional arrays.
@@ -301,20 +391,20 @@ cdef extern from "numpy/arrayobject.h":
             return PyArray_DIMS(self)
 
         @property
-        cdef inline npy_intp *strides(self) nogil:
+        cdef inline npy_intp *strides(self) noexcept nogil:
             """Returns a pointer to the strides of the array.
             The number of elements matches the number of dimensions of the array (ndim).
             """
             return PyArray_STRIDES(self)
 
         @property
-        cdef inline npy_intp size(self) nogil:
+        cdef inline npy_intp size(self) noexcept nogil:
             """Returns the total size (in number of elements) of the array.
             """
             return PyArray_SIZE(self)
 
         @property
-        cdef inline char* data(self) nogil:
+        cdef inline char* data(self) noexcept nogil:
             """The pointer to the data buffer as a char*.
             This is provided for legacy reasons to avoid direct struct field access.
             For new code that needs this access, you probably want to cast the result
@@ -322,79 +412,6 @@ cdef extern from "numpy/arrayobject.h":
             """
             return PyArray_BYTES(self)
 
-    ctypedef unsigned char      npy_bool
-
-    ctypedef signed char      npy_byte
-    ctypedef signed short     npy_short
-    ctypedef signed int       npy_int
-    ctypedef signed long      npy_long
-    ctypedef signed long long npy_longlong
-
-    ctypedef unsigned char      npy_ubyte
-    ctypedef unsigned short     npy_ushort
-    ctypedef unsigned int       npy_uint
-    ctypedef unsigned long      npy_ulong
-    ctypedef unsigned long long npy_ulonglong
-
-    ctypedef float        npy_float
-    ctypedef double       npy_double
-    ctypedef long double  npy_longdouble
-
-    ctypedef signed char        npy_int8
-    ctypedef signed short       npy_int16
-    ctypedef signed int         npy_int32
-    ctypedef signed long long   npy_int64
-    ctypedef signed long long   npy_int96
-    ctypedef signed long long   npy_int128
-
-    ctypedef unsigned char      npy_uint8
-    ctypedef unsigned short     npy_uint16
-    ctypedef unsigned int       npy_uint32
-    ctypedef unsigned long long npy_uint64
-    ctypedef unsigned long long npy_uint96
-    ctypedef unsigned long long npy_uint128
-
-    ctypedef float        npy_float32
-    ctypedef double       npy_float64
-    ctypedef long double  npy_float80
-    ctypedef long double  npy_float96
-    ctypedef long double  npy_float128
-
-    ctypedef struct npy_cfloat:
-        float real
-        float imag
-
-    ctypedef struct npy_cdouble:
-        double real
-        double imag
-
-    ctypedef struct npy_clongdouble:
-        long double real
-        long double imag
-
-    ctypedef struct npy_complex64:
-        float real
-        float imag
-
-    ctypedef struct npy_complex128:
-        double real
-        double imag
-
-    ctypedef struct npy_complex160:
-        long double real
-        long double imag
-
-    ctypedef struct npy_complex192:
-        long double real
-        long double imag
-
-    ctypedef struct npy_complex256:
-        long double real
-        long double imag
-
-    ctypedef struct PyArray_Dims:
-        npy_intp *ptr
-        int len
 
     int _import_array() except -1
     # A second definition so _import_array isn't marked as used when we use it here.
@@ -444,11 +461,17 @@ cdef extern from "numpy/arrayobject.h":
     bint PyTypeNum_ISNUMBER(int) nogil
     bint PyTypeNum_ISSTRING(int) nogil
     bint PyTypeNum_ISCOMPLEX(int) nogil
-    bint PyTypeNum_ISPYTHON(int) nogil
     bint PyTypeNum_ISFLEXIBLE(int) nogil
     bint PyTypeNum_ISUSERDEF(int) nogil
     bint PyTypeNum_ISEXTENDED(int) nogil
     bint PyTypeNum_ISOBJECT(int) nogil
+
+    npy_intp PyDataType_ELSIZE(dtype) nogil
+    npy_intp PyDataType_ALIGNMENT(dtype) nogil
+    PyObject* PyDataType_METADATA(dtype) nogil
+    PyArray_ArrayDescr* PyDataType_SUBARRAY(dtype) nogil
+    PyObject* PyDataType_NAMES(dtype) nogil
+    PyObject* PyDataType_FIELDS(dtype) nogil
 
     bint PyDataType_ISBOOL(dtype) nogil
     bint PyDataType_ISUNSIGNED(dtype) nogil
@@ -458,13 +481,13 @@ cdef extern from "numpy/arrayobject.h":
     bint PyDataType_ISNUMBER(dtype) nogil
     bint PyDataType_ISSTRING(dtype) nogil
     bint PyDataType_ISCOMPLEX(dtype) nogil
-    bint PyDataType_ISPYTHON(dtype) nogil
     bint PyDataType_ISFLEXIBLE(dtype) nogil
     bint PyDataType_ISUSERDEF(dtype) nogil
     bint PyDataType_ISEXTENDED(dtype) nogil
     bint PyDataType_ISOBJECT(dtype) nogil
     bint PyDataType_HASFIELDS(dtype) nogil
     bint PyDataType_HASSUBARRAY(dtype) nogil
+    npy_uint64 PyDataType_FLAGS(dtype) nogil
 
     bint PyArray_ISBOOL(ndarray) nogil
     bint PyArray_ISUNSIGNED(ndarray) nogil
@@ -474,7 +497,6 @@ cdef extern from "numpy/arrayobject.h":
     bint PyArray_ISNUMBER(ndarray) nogil
     bint PyArray_ISSTRING(ndarray) nogil
     bint PyArray_ISCOMPLEX(ndarray) nogil
-    bint PyArray_ISPYTHON(ndarray) nogil
     bint PyArray_ISFLEXIBLE(ndarray) nogil
     bint PyArray_ISUSERDEF(ndarray) nogil
     bint PyArray_ISEXTENDED(ndarray) nogil
@@ -533,8 +555,7 @@ cdef extern from "numpy/arrayobject.h":
     object PyArray_FROMANY(object m, int type, int min, int max, int flags)
     object PyArray_ZEROS(int nd, npy_intp* dims, int type, int fortran)
     object PyArray_EMPTY(int nd, npy_intp* dims, int type, int fortran)
-    void PyArray_FILLWBYTE(object, int val)
-    npy_intp PyArray_REFCOUNT(object)
+    void PyArray_FILLWBYTE(ndarray, int val)
     object PyArray_ContiguousFromAny(op, int, int min_depth, int max_depth)
     unsigned char PyArray_EquivArrTypes(ndarray a1, ndarray a2)
     bint PyArray_EquivByteorders(int b1, int b2) nogil
@@ -589,14 +610,11 @@ cdef extern from "numpy/arrayobject.h":
     # more than is probably needed until it can be checked further.
     int PyArray_INCREF (ndarray) except *  # uses PyArray_Item_INCREF...
     int PyArray_XDECREF (ndarray) except *  # uses PyArray_Item_DECREF...
-    void PyArray_SetStringFunction (object, int)
     dtype PyArray_DescrFromType (int)
     object PyArray_TypeObjectFromType (int)
     char * PyArray_Zero (ndarray)
     char * PyArray_One (ndarray)
     #object PyArray_CastToType (ndarray, dtype, int)
-    int PyArray_CastTo (ndarray, ndarray) except -1
-    int PyArray_CastAnyTo (ndarray, ndarray) except -1
     int PyArray_CanCastSafely (int, int)  # writes errors
     npy_bool PyArray_CanCastTo (dtype, dtype)  # writes errors
     int PyArray_ObjectType (object, int) except 0
@@ -623,7 +641,6 @@ cdef extern from "numpy/arrayobject.h":
     #int PyArray_SetField (ndarray, dtype, int, object) except -1
     object PyArray_Byteswap (ndarray, npy_bool)
     object PyArray_Resize (ndarray, PyArray_Dims *, int, NPY_ORDER)
-    int PyArray_MoveInto (ndarray, ndarray) except -1
     int PyArray_CopyInto (ndarray, ndarray) except -1
     int PyArray_CopyAnyInto (ndarray, ndarray) except -1
     int PyArray_CopyObject (ndarray, object) except -1
@@ -646,7 +663,6 @@ cdef extern from "numpy/arrayobject.h":
     int PyArray_PyIntAsInt (object) except? -1
     npy_intp PyArray_PyIntAsIntp (object)
     int PyArray_Broadcast (broadcast) except -1
-    void PyArray_FillObjectArray (ndarray, object) except *
     int PyArray_FillWithScalar (ndarray, object) except -1
     npy_bool PyArray_CheckStrides (int, int, npy_intp, npy_intp, npy_intp *, npy_intp *)
     dtype PyArray_DescrNewByteorder (dtype, char)
@@ -658,14 +674,11 @@ cdef extern from "numpy/arrayobject.h":
     #object PyArray_FromArrayAttr (object, dtype, object)
     #NPY_SCALARKIND PyArray_ScalarKind (int, ndarray*)
     int PyArray_CanCoerceScalar (int, int, NPY_SCALARKIND)
-    object PyArray_NewFlagsObject (object)
     npy_bool PyArray_CanCastScalar (type, type)
-    #int PyArray_CompareUCS4 (npy_ucs4 *, npy_ucs4 *, register size_t)
     int PyArray_RemoveSmallest (broadcast) except -1
     int PyArray_ElementStrides (object)
     void PyArray_Item_INCREF (char *, dtype) except *
     void PyArray_Item_XDECREF (char *, dtype) except *
-    object PyArray_FieldNames (object)
     object PyArray_Transpose (ndarray, PyArray_Dims *)
     object PyArray_TakeFrom (ndarray, object, int, ndarray, NPY_CLIPMODE)
     object PyArray_PutTo (ndarray, object, object, NPY_CLIPMODE)
@@ -713,7 +726,6 @@ cdef extern from "numpy/arrayobject.h":
     object PyArray_InnerProduct (object, object)
     object PyArray_MatrixProduct (object, object)
     object PyArray_Correlate (object, object, int)
-    int PyArray_TypestrConvert (int, int)
     #int PyArray_DescrConverter (object, dtype*) except 0
     #int PyArray_DescrConverter2 (object, dtype*) except 0
     int PyArray_IntpConverter (object, PyArray_Dims *) except 0
@@ -737,7 +749,6 @@ cdef extern from "numpy/arrayobject.h":
     int PyArray_RegisterCanCast (dtype, int, NPY_SCALARKIND) except -1
     #void PyArray_InitArrFuncs (PyArray_ArrFuncs *)
     object PyArray_IntTupleFromIntp (int, npy_intp *)
-    int PyArray_TypeNumFromName (char *)
     int PyArray_ClipmodeConverter (object, NPY_CLIPMODE *) except 0
     #int PyArray_OutputConverter (object, ndarray*) except 0
     object PyArray_BroadcastToShape (object, npy_intp *, int)
@@ -746,8 +757,24 @@ cdef extern from "numpy/arrayobject.h":
     int PyArray_SearchsideConverter (object, void *) except 0
     object PyArray_CheckAxis (ndarray, int *, int)
     npy_intp PyArray_OverflowMultiplyList (npy_intp *, int)
-    int PyArray_CompareString (char *, char *, size_t)
     int PyArray_SetBaseObject(ndarray, base) except -1 # NOTE: steals a reference to base! Use "set_array_base()" instead.
+
+    # The memory handler functions require the NumPy 1.22 API
+    # and may require defining NPY_TARGET_VERSION
+    ctypedef struct PyDataMemAllocator:
+        void *ctx
+        void* (*malloc) (void *ctx, size_t size)
+        void* (*calloc) (void *ctx, size_t nelem, size_t elsize)
+        void* (*realloc) (void *ctx, void *ptr, size_t new_size)
+        void (*free) (void *ctx, void *ptr, size_t size)
+
+    ctypedef struct PyDataMem_Handler:
+        char* name
+        npy_uint8 version
+        PyDataMemAllocator allocator
+
+    object PyDataMem_SetHandler(object handler)
+    object PyDataMem_GetHandler()
 
     # additional datetime related functions are defined below
 
@@ -790,11 +817,10 @@ ctypedef npy_double     float_t
 ctypedef npy_double     double_t
 ctypedef npy_longdouble longdouble_t
 
-ctypedef npy_cfloat      cfloat_t
-ctypedef npy_cdouble     cdouble_t
-ctypedef npy_clongdouble clongdouble_t
-
-ctypedef npy_cdouble     complex_t
+ctypedef float complex       cfloat_t
+ctypedef double complex      cdouble_t
+ctypedef double complex      complex_t
+ctypedef long double complex clongdouble_t
 
 cdef inline object PyArray_MultiIterNew1(a):
     return PyArray_MultiIterNew(1, <void*>a)
@@ -832,6 +858,7 @@ cdef extern from "numpy/ndarraytypes.h":
     ctypedef struct npy_datetimestruct:
         int64_t year
         int32_t month, day, hour, min, sec, us, ps, as
+
 
 cdef extern from "numpy/arrayscalars.h":
 
@@ -998,7 +1025,7 @@ cdef extern from "numpy/ufuncobject.h":
 
     int _import_umath() except -1
 
-cdef inline void set_array_base(ndarray arr, object base):
+cdef inline void set_array_base(ndarray arr, object base) except *:
     Py_INCREF(base) # important to do this before stealing the reference below!
     PyArray_SetBaseObject(arr, base)
 
@@ -1029,7 +1056,7 @@ cdef inline int import_ufunc() except -1:
         raise ImportError("numpy._core.umath failed to import")
 
 
-cdef inline bint is_timedelta64_object(object obj):
+cdef inline bint is_timedelta64_object(object obj) noexcept:
     """
     Cython equivalent of `isinstance(obj, np.timedelta64)`
 
@@ -1044,7 +1071,7 @@ cdef inline bint is_timedelta64_object(object obj):
     return PyObject_TypeCheck(obj, &PyTimedeltaArrType_Type)
 
 
-cdef inline bint is_datetime64_object(object obj):
+cdef inline bint is_datetime64_object(object obj) noexcept:
     """
     Cython equivalent of `isinstance(obj, np.datetime64)`
 
@@ -1059,7 +1086,7 @@ cdef inline bint is_datetime64_object(object obj):
     return PyObject_TypeCheck(obj, &PyDatetimeArrType_Type)
 
 
-cdef inline npy_datetime get_datetime64_value(object obj) nogil:
+cdef inline npy_datetime get_datetime64_value(object obj) noexcept nogil:
     """
     returns the int64 value underlying scalar numpy datetime64 object
 
@@ -1069,14 +1096,14 @@ cdef inline npy_datetime get_datetime64_value(object obj) nogil:
     return (<PyDatetimeScalarObject*>obj).obval
 
 
-cdef inline npy_timedelta get_timedelta64_value(object obj) nogil:
+cdef inline npy_timedelta get_timedelta64_value(object obj) noexcept nogil:
     """
     returns the int64 value underlying scalar numpy timedelta64 object
     """
     return (<PyTimedeltaScalarObject*>obj).obval
 
 
-cdef inline NPY_DATETIMEUNIT get_datetime64_unit(object obj) nogil:
+cdef inline NPY_DATETIMEUNIT get_datetime64_unit(object obj) noexcept nogil:
     """
     returns the unit part of the dtype for a numpy datetime64 object.
     """
@@ -1215,3 +1242,35 @@ cdef extern from "numpy/arrayobject.h":
     void NpyIter_GetInnerFixedStrideArray(NpyIter* it, npy_intp* outstrides) nogil
     npy_bool NpyIter_IterationNeedsAPI(NpyIter* it) nogil
     void NpyIter_DebugPrint(NpyIter* it)
+
+# NpyString API
+cdef extern from "numpy/ndarraytypes.h":
+    ctypedef struct npy_string_allocator:
+        pass
+
+    ctypedef struct npy_packed_static_string:
+        pass
+
+    ctypedef struct npy_static_string:
+        size_t size
+        const char *buf
+
+    ctypedef struct PyArray_StringDTypeObject:
+        PyArray_Descr base
+        PyObject *na_object
+        char coerce
+        char has_nan_na
+        char has_string_na
+        char array_owned
+        npy_static_string default_string
+        npy_static_string na_name
+        npy_string_allocator *allocator
+
+cdef extern from "numpy/arrayobject.h":
+    npy_string_allocator *NpyString_acquire_allocator(const PyArray_StringDTypeObject *descr)
+    void NpyString_acquire_allocators(size_t n_descriptors, PyArray_Descr *const descrs[], npy_string_allocator *allocators[])
+    void NpyString_release_allocator(npy_string_allocator *allocator)
+    void NpyString_release_allocators(size_t length, npy_string_allocator *allocators[])
+    int NpyString_load(npy_string_allocator *allocator, const npy_packed_static_string *packed_string, npy_static_string *unpacked_string)
+    int NpyString_pack_null(npy_string_allocator *allocator, npy_packed_static_string *packed_string)
+    int NpyString_pack(npy_string_allocator *allocator, npy_packed_static_string *packed_string, const char *buf, size_t size)

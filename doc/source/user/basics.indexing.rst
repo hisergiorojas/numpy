@@ -383,8 +383,8 @@ with y::
 
     >>> y[np.array([0, 2, 4])]
     array([[ 0,  1,  2,  3,  4,  5,  6],
-          [14, 15, 16, 17, 18, 19, 20],
-          [28, 29, 30, 31, 32, 33, 34]])
+           [14, 15, 16, 17, 18, 19, 20],
+           [28, 29, 30, 31, 32, 33, 34]])
 
 It results in the construction of a new array where each value of the
 index array selects one row from the array being indexed and the resultant
@@ -665,11 +665,11 @@ behave just like slicing).
 
 .. rubric:: Example
 
-Suppose ``x.shape`` is (10, 20, 30) and ``ind`` is a (2, 3, 4)-shaped
+Suppose ``x.shape`` is (10, 20, 30) and ``ind`` is a (2, 5, 2)-shaped
 indexing :class:`intp` array, then ``result = x[..., ind, :]`` has
-shape (10, 2, 3, 4, 30) because the (20,)-shaped subspace has been
-replaced with a (2, 3, 4)-shaped broadcasted indexing subspace. If
-we let *i, j, k* loop over the (2, 3, 4)-shaped subspace then
+shape (10, 2, 5, 2, 30) because the (20,)-shaped subspace has been
+replaced with a (2, 5, 2)-shaped broadcasted indexing subspace. If
+we let *i, j, k* loop over the (2, 5, 2)-shaped subspace then
 ``result[..., i, j, k, :] = x[..., ind[i, j, k], :]``. This example
 produces the same result as :meth:`x.take(ind, axis=-2) <ndarray.take>`.
 

@@ -37,7 +37,6 @@ class A:
     def __float__(self):
         return 1.0
 
-
 np.int8(A())  # E: incompatible type
 np.int16(A())  # E: incompatible type
 np.int32(A())  # E: incompatible type
@@ -64,7 +63,7 @@ np.complex128(value=0.0j)  # E: Unexpected keyword argument
 np.str_(value='bob')  # E: No overload variant
 np.bytes_(value=b'test')  # E: No overload variant
 np.void(value=b'test')  # E: No overload variant
-np.bool_(value=True)  # E: Unexpected keyword argument
+np.bool(value=True)  # E: Unexpected keyword argument
 np.datetime64(value="2019")  # E: No overload variant
 np.timedelta64(value=0)  # E: Unexpected keyword argument
 
@@ -81,8 +80,6 @@ def func(a: np.float32) -> None: ...
 
 func(f2)  # E: incompatible type
 func(f8)  # E: incompatible type
-
-round(c8)  # E: No overload variant
 
 c8.__getnewargs__()  # E: Invalid self argument
 f2.__getnewargs__()  # E: Invalid self argument
