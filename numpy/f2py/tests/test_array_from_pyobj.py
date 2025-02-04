@@ -1,12 +1,11 @@
-import os
 import sys
 import copy
 import platform
 import pytest
+from pathlib import Path
 
 import numpy as np
 
-from numpy.testing import assert_, assert_equal
 from numpy._core._type_aliases import c_names_dict as _c_names_dict
 from . import util
 
@@ -19,6 +18,10 @@ c_names_dict = dict(
 )
 
 
+def get_testdir():
+    testroot = Path(__file__).resolve().parent / "src"
+    return testroot / "array_from_pyobj"
+
 def setup_module():
     """
     Build the required testing extension module
@@ -26,24 +29,11 @@ def setup_module():
     """
     global wrap
 
-    # Check compiler availability first
-    if not util.has_c_compiler():
-        pytest.skip("No C compiler available")
-
     if wrap is None:
-        config_code = """
-        config.add_extension('test_array_from_pyobj_ext',
-                             sources=['wrapmodule.c', 'fortranobject.c'],
-                             define_macros=[])
-        """
-        d = os.path.dirname(__file__)
         src = [
-            util.getpath("tests", "src", "array_from_pyobj", "wrapmodule.c"),
-            util.getpath("src", "fortranobject.c"),
-            util.getpath("src", "fortranobject.h"),
+            get_testdir() / "wrapmodule.c",
         ]
-        wrap = util.build_module_distutils(src, config_code,
-                                           "test_array_from_pyobj_ext")
+        wrap = util.build_meson(src, module_name = "test_array_from_pyobj_ext")
 
 
 def flags_info(arr):
@@ -98,10 +88,7 @@ class Intent:
         return "Intent(%r)" % (self.intent_list)
 
     def is_intent(self, *names):
-        for name in names:
-            if name not in self.intent_list:
-                return False
-        return True
+        return all(name in self.intent_list for name in names)
 
     def is_intent_exact(self, *names):
         return len(self.intent_list) == len(names) and self.is_intent(*names)
@@ -156,7 +143,7 @@ _cast_dict['CHARACTER'] = ['CHARACTER']
 
 # 32 bit system malloc typically does not provide the alignment required by
 # 16 byte long double types this means the inout intent cannot be satisfied
-# and several tests fail as the alignment flag can be randomly true or fals
+# and several tests fail as the alignment flag can be randomly true or false
 # when numpy gains an aligned allocator the tests could be enabled again
 #
 # Furthermore, on macOS ARM64, LONGDOUBLE is an alias for DOUBLE.
@@ -202,12 +189,12 @@ class Type:
 
         if self.NAME == 'CHARACTER':
             info = c_names_dict[self.NAME]
-            self.type_num = getattr(wrap, 'NPY_STRING')
+            self.type_num = wrap.NPY_STRING
             self.elsize = 1
             self.dtype = np.dtype('c')
         elif self.NAME.startswith('STRING'):
             info = c_names_dict[self.NAME[:6]]
-            self.type_num = getattr(wrap, 'NPY_STRING')
+            self.type_num = wrap.NPY_STRING
             self.elsize = int(self.NAME[6:] or 0)
             self.dtype = np.dtype(f'S{self.elsize}')
         else:
@@ -556,6 +543,10 @@ class TestSharedMemory:
                 # string elsize is 0, so skipping the test
                 continue
             if t.elsize >= self.type.elsize:
+                continue
+            is_int = np.issubdtype(t.dtype, np.integer)
+            if is_int and int(self.num2seq[0]) > np.iinfo(t.dtype).max:
+                # skip test if num2seq would trigger an overflow error
                 continue
             obj = np.array(self.num2seq, dtype=t.dtype)
             shape = (len(self.num2seq), )

@@ -1,12 +1,12 @@
 from collections.abc import Callable
-from typing import Any, Literal, TypedDict, SupportsIndex
+from typing import Any, Literal, TypeAlias, TypedDict, SupportsIndex, type_check_only
 
 # Using a private class is by no means ideal, but it is simply a consequence
 # of a `contextlib.context` returning an instance of aforementioned class
 from contextlib import _GeneratorContextManager
 
+import numpy as np
 from numpy import (
-    bool_,
     integer,
     timedelta64,
     datetime64,
@@ -18,10 +18,11 @@ from numpy import (
 )
 from numpy._typing import NDArray, _CharLike_co, _FloatLike_co
 
-_FloatMode = Literal["fixed", "unique", "maxprec", "maxprec_equal"]
+_FloatMode: TypeAlias = Literal["fixed", "unique", "maxprec", "maxprec_equal"]
 
+@type_check_only
 class _FormatDict(TypedDict, total=False):
-    bool: Callable[[bool_], str]
+    bool: Callable[[np.bool], str]
     int: Callable[[integer[Any]], str]
     timedelta: Callable[[timedelta64], str]
     datetime: Callable[[datetime64], str]
@@ -38,6 +39,7 @@ class _FormatDict(TypedDict, total=False):
     complex_kind: Callable[[complexfloating[Any, Any]], str]
     str_kind: Callable[[_CharLike_co], str]
 
+@type_check_only
 class _FormatOptions(TypedDict):
     precision: int
     threshold: int
@@ -60,10 +62,11 @@ def set_printoptions(
     nanstr: None | str = ...,
     infstr: None | str = ...,
     formatter: None | _FormatDict = ...,
-    sign: Literal[None, "-", "+", " "] = ...,
+    sign: Literal["-", "+", " "] | None = ...,
     floatmode: None | _FloatMode = ...,
     *,
-    legacy: Literal[None, False, "1.13", "1.21"] = ...
+    legacy: Literal[False, "1.13", "1.21", "1.25", "2.1"] | None = ...,
+    override_repr: None | Callable[[NDArray[Any]], str] = ...,
 ) -> None: ...
 def get_printoptions() -> _FormatOptions: ...
 def array2string(
@@ -80,10 +83,10 @@ def array2string(
     formatter: None | _FormatDict = ...,
     threshold: None | int = ...,
     edgeitems: None | int = ...,
-    sign: Literal[None, "-", "+", " "] = ...,
+    sign: Literal["-", "+", " "] | None = ...,
     floatmode: None | _FloatMode = ...,
     suffix: str = ...,
-    legacy: Literal[None, False, "1.13", "1.21"] = ...,
+    legacy: Literal[False, "1.13", "1.21"] | None = ...,
 ) -> str: ...
 def format_float_scientific(
     x: _FloatLike_co,
@@ -118,9 +121,6 @@ def array_str(
     precision: None | SupportsIndex = ...,
     suppress_small: None | bool = ...,
 ) -> str: ...
-def set_string_function(
-    f: None | Callable[[NDArray[Any]], str], repr: bool = ...
-) -> None: ...
 def printoptions(
     precision: None | SupportsIndex = ...,
     threshold: None | int = ...,
@@ -130,8 +130,8 @@ def printoptions(
     nanstr: None | str = ...,
     infstr: None | str = ...,
     formatter: None | _FormatDict = ...,
-    sign: Literal[None, "-", "+", " "] = ...,
+    sign: Literal["-", "+", " "] | None = ...,
     floatmode: None | _FloatMode = ...,
     *,
-    legacy: Literal[None, False, "1.13", "1.21"] = ...
+    legacy: Literal[False, "1.13", "1.21"] | None = ...
 ) -> _GeneratorContextManager[_FormatOptions]: ...

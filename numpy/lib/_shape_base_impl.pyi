@@ -1,24 +1,27 @@
-import sys
 from collections.abc import Callable, Sequence
-from typing import TypeVar, Any, overload, SupportsIndex, Protocol
+from typing import (
+    TypeVar,
+    Any,
+    overload,
+    SupportsIndex,
+    Protocol,
+    ParamSpec,
+    Concatenate,
+    type_check_only,
+)
 
-if sys.version_info >= (3, 10):
-    from typing import ParamSpec, Concatenate
-else:
-    from typing_extensions import ParamSpec, Concatenate
-
+import numpy as np
 from numpy import (
     generic,
     integer,
     ufunc,
-    bool_,
     unsignedinteger,
     signedinteger,
     floating,
     complexfloating,
     object_,
 )
-
+from numpy._core.shape_base import vstack as row_stack
 from numpy._typing import (
     ArrayLike,
     NDArray,
@@ -32,28 +35,42 @@ from numpy._typing import (
     _ArrayLikeObject_co,
 )
 
-from numpy._core.shape_base import vstack
+__all__ = [
+    "column_stack",
+    "row_stack",
+    "dstack",
+    "array_split",
+    "split",
+    "hsplit",
+    "vsplit",
+    "dsplit",
+    "apply_over_axes",
+    "expand_dims",
+    "apply_along_axis",
+    "kron",
+    "tile",
+    "take_along_axis",
+    "put_along_axis",
+]
 
 _P = ParamSpec("_P")
 _SCT = TypeVar("_SCT", bound=generic)
 
 # Signature of `__array_wrap__`
+@type_check_only
 class _ArrayWrap(Protocol):
     def __call__(
         self,
         array: NDArray[Any],
         context: None | tuple[ufunc, tuple[Any, ...], int] = ...,
+        return_scalar: bool = ...,
         /,
     ) -> Any: ...
 
+@type_check_only
 class _SupportsArrayWrap(Protocol):
     @property
     def __array_wrap__(self) -> _ArrayWrap: ...
-
-
-__all__: list[str]
-
-row_stack = vstack
 
 def take_along_axis(
     arr: _SCT | NDArray[_SCT],
@@ -78,7 +95,7 @@ def apply_along_axis(
 ) -> NDArray[_SCT]: ...
 @overload
 def apply_along_axis(
-    func1d: Callable[Concatenate[NDArray[Any], _P], ArrayLike],
+    func1d: Callable[Concatenate[NDArray[Any], _P], Any],
     axis: SupportsIndex,
     arr: ArrayLike,
     *args: _P.args,
@@ -177,7 +194,7 @@ def get_array_wrap(*args: _SupportsArrayWrap) -> _ArrayWrap: ...
 def get_array_wrap(*args: object) -> None | _ArrayWrap: ...
 
 @overload
-def kron(a: _ArrayLikeBool_co, b: _ArrayLikeBool_co) -> NDArray[bool_]: ...  # type: ignore[misc]
+def kron(a: _ArrayLikeBool_co, b: _ArrayLikeBool_co) -> NDArray[np.bool]: ...  # type: ignore[misc]
 @overload
 def kron(a: _ArrayLikeUInt_co, b: _ArrayLikeUInt_co) -> NDArray[unsignedinteger[Any]]: ...  # type: ignore[misc]
 @overload

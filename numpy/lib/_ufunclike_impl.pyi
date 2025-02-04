@@ -1,6 +1,7 @@
 from typing import Any, overload, TypeVar
 
-from numpy import floating, bool_, object_
+import numpy as np
+from numpy import floating, object_
 from numpy._typing import (
     NDArray,
     _FloatLike_co,
@@ -8,9 +9,9 @@ from numpy._typing import (
     _ArrayLikeObject_co,
 )
 
-_ArrayType = TypeVar("_ArrayType", bound=NDArray[Any])
+__all__ = ["fix", "isneginf", "isposinf"]
 
-__all__: list[str]
+_ArrayType = TypeVar("_ArrayType", bound=NDArray[Any])
 
 @overload
 def fix(  # type: ignore[misc]
@@ -37,12 +38,12 @@ def fix(
 def isposinf(  # type: ignore[misc]
     x: _FloatLike_co,
     out: None = ...,
-) -> bool_: ...
+) -> np.bool: ...
 @overload
 def isposinf(
     x: _ArrayLikeFloat_co,
     out: None = ...,
-) -> NDArray[bool_]: ...
+) -> NDArray[np.bool]: ...
 @overload
 def isposinf(
     x: _ArrayLikeFloat_co,
@@ -53,12 +54,12 @@ def isposinf(
 def isneginf(  # type: ignore[misc]
     x: _FloatLike_co,
     out: None = ...,
-) -> bool_: ...
+) -> np.bool: ...
 @overload
 def isneginf(
     x: _ArrayLikeFloat_co,
     out: None = ...,
-) -> NDArray[bool_]: ...
+) -> NDArray[np.bool]: ...
 @overload
 def isneginf(
     x: _ArrayLikeFloat_co,

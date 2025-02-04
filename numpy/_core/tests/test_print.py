@@ -60,9 +60,9 @@ def test_complex_types(tp):
     for x in [0, 1, -1, 1e20]:
         assert_equal(str(tp(x)), str(complex(x)),
                      err_msg='Failed str formatting for type %s' % tp)
-        assert_equal(str(tp(x*1j)), str(complex(x*1j)),
+        assert_equal(str(tp(x * 1j)), str(complex(x * 1j)),
                      err_msg='Failed str formatting for type %s' % tp)
-        assert_equal(str(tp(x + x*1j)), str(complex(x + x*1j)),
+        assert_equal(str(tp(x + x * 1j)), str(complex(x + x * 1j)),
                      err_msg='Failed str formatting for type %s' % tp)
 
     if tp(1e16).itemsize > 8:
@@ -156,8 +156,8 @@ def test_complex_type_print(tp):
 
 def test_scalar_format():
     """Test the str.format method with NumPy scalar types"""
-    tests = [('{0}', True, np.bool_),
-            ('{0}', False, np.bool_),
+    tests = [('{0}', True, np.bool),
+            ('{0}', False, np.bool),
             ('{0:d}', 130, np.uint8),
             ('{0:d}', 50000, np.uint16),
             ('{0:d}', 3000000000, np.uint32),
@@ -170,9 +170,9 @@ def test_scalar_format():
             ('{0:g}', 1.5, np.float32),
             ('{0:g}', 1.5, np.float64),
             ('{0:g}', 1.5, np.longdouble),
-            ('{0:g}', 1.5+0.5j, np.complex64),
-            ('{0:g}', 1.5+0.5j, np.complex128),
-            ('{0:g}', 1.5+0.5j, np.clongdouble)]
+            ('{0:g}', 1.5 + 0.5j, np.complex64),
+            ('{0:g}', 1.5 + 0.5j, np.complex128),
+            ('{0:g}', 1.5 + 0.5j, np.clongdouble)]
 
     for (fmat, val, valtype) in tests:
         try:

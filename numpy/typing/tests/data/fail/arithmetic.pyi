@@ -3,14 +3,14 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-b_ = np.bool_()
+b_ = np.bool()
 dt = np.datetime64(0, "D")
 td = np.timedelta64(0, "D")
 
-AR_b: npt.NDArray[np.bool_]
+AR_b: npt.NDArray[np.bool]
 AR_u: npt.NDArray[np.uint32]
 AR_i: npt.NDArray[np.int64]
-AR_f: npt.NDArray[np.float64]
+AR_f: npt.NDArray[np.longdouble]
 AR_c: npt.NDArray[np.complex128]
 AR_m: npt.NDArray[np.timedelta64]
 AR_M: npt.NDArray[np.datetime64]
